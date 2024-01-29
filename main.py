@@ -1,37 +1,5 @@
-# # Importing Libraries 
-# import serial 
-# import time 
-# arduino = serial.Serial(port='COM5', baudrate=115200, timeout=.1) 
-# def write_read(x): 
-#     arduino.write(bytes(x, 'utf-8')) 
-#     time.sleep(0.05)
-#     data = arduino.readline()
-#     return data 
-# while True: 
-#     num = input("Enter a number: ") # Taking input from user 
-#     value = write_read(num) 
-#     print(value) # printing the value 
-
-
-#############################################################
-# import serial
-# import pandas as pd
-# import json
-# # Replace with the COM port of your ESP32 (e.g., 'COM1' on Windows or '/dev/ttyUSB0' on Linux)
-# ser = serial.Serial('COM5', 115200, timeout=1)
-
-# while True:
-#     data_to_send = input("Enter data to send to ESP32: ")
-    
-#     # Send data to the ESP32
-#     ser.write((data_to_send + '\n').encode())
-    
-#     # Read and print the ESP32's response (optional)
-#     response = ser.readline().decode().strip()
-#     print("Received from ESP32:", response)
-
-
-##########################
+# Created by Yash Hingu
+# https://github.com/Yash-Hingu/Stepper-project
 
 import time
 import serial
@@ -40,7 +8,16 @@ import json
 import keyboard
 from calculate_angle import angle_to_steps, dist_to_steps
 # Replace with the COM port of your ESP32 (e.g., 'COM1' on Windows or '/dev/ttyUSB0' on Linux)
-ser = serial.Serial('COM5', 115200, timeout=1)
+for t in range(1,11):
+  try:
+    ser = serial.Serial('COM5', 115200, timeout=1)
+    print("Connected to " + ser.port)
+    break
+  except Exception as e:
+          time.sleep(2)
+          print(f"Error: {str(e)}")
+          print(f"Retrying...  {t}" )
+   
 
 excel_file_path = "Sample.csv"
 def read_excel_to_dict(file_path):
@@ -66,7 +43,7 @@ def read_excel_to_dict(file_path):
               "row": index,
               "motor1": angle_to_steps(int(row[0])),
               "motor2": angle_to_steps(int(row[1])),
-              "motor3": dist_to_steps(int(row[2]))
+              "motor3": angle_to_steps(int(row[2]))
             }
             data_list.append(data_dict)
 
@@ -79,72 +56,20 @@ def read_excel_to_dict(file_path):
 alldone = None
 data_list = read_excel_to_dict(excel_file_path)
 global index
-# print(index)
-connection2esp = False
+
 read_excel_to_dict(excel_file_path)
 print(str(data_list[0]))
-
-# while not connection2esp:
-#     ser.write(("connection" + '\n').encode())
-#     response = ser.readall().decode().strip()
-#     if response == "0":
-#        connection2esp = True
-#        print("connected!")
-#        break
-#     print("connecting")
-#     time.sleep(2)
 
 
 data_list =  read_excel_to_dict(excel_file_path)
 
-
-
-# count_row = 0
-# prvs_res = None
-# while alldone != 0 and connection2esp:
-#     # data_to_send = input("Enter data to send to ESP32: ")
-    
-
-     
-    # Send data to the ESP32
-    # if prvs_res != response:
-# ser.write((str(data_list[0]) + '\n').encode())
-# ser.close()
 while True:
   data_list = read_excel_to_dict(excel_file_path)
   ser.write((str(data_list[0]) + '\n').encode())
   time.sleep(1)
+
   if keyboard.is_pressed("q"):
         break 
 
-# ser.write(('{"row": 0, "motor1": 2000.0, "motor2": 1066.67, "motor3": 1259.0}'+ '\n').encode())
-# time.sleep(3)
-# ser.write(('{"row": 0, "motor1": 4000.0, "motor2": 1066.67, "motor3": 1259.0}'+ '\n').encode())
-# time.sleep(3)
-# ser.write(('{"row": 0, "motor1": 6000.0, "motor2": 1066.67, "motor3": 1259.0}'+ '\n').encode())
-# time.sleep(3)
-# ser.write(('{"row": 0, "motor1": 8000.0, "motor2": 1066.67, "motor3": 1259.0}'+ '\n').encode())
-# time.sleep(3)
-# ser.write(('{"row": 0, "motor1": 00.0, "motor2": 1066.67, "motor3": 1259.0}'+ '\n').encode())
-# time.sleep(10)
-# ser.write('{"row": 0, "motor1": 4000.0, "motor2": 1066.67, "motor3": 1259.0} \n'.encode())
-    
-    # # Read and print the ESP32's response (optional)
-    # # response = ser.readline().decode().strip()
-# response = ser.readall().decode().strip()
-# print(response)
-    # if (response.isnumeric()):
-    #    count_row = int(response)
-    #    prvs_res = count_row
-    #    count_row = count_row + 1
-    #    alldone = count_row - 1
 
-
-
-    # if response == "0":
-    # #    alldone = 2
-    #    print("it's zero")
-    # # print("Received from ESP32:", response)
-    # # time.sleep(0.1)
-    # # print(ser.readall().decode().strip()," <---")
 ser.close()

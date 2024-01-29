@@ -25,7 +25,7 @@ def read_excel_to_dict(file_path):
               "row": index,
               "motor1": angle_to_steps(float(row[0])),
               "motor2": angle_to_steps(float(row[1])),
-              "motor3": dist_to_steps(float(row[2]))
+              "motor3": angle_to_steps(float(row[2]))
             }
             data_list.append(data_dict)
 

@@ -1,5 +1,6 @@
 //  Created by Yash Hingu
-// https://github.com/Yash-Hingu/Stepper-project
+//  https://github.com/Yash-Hingu/Stepper-project
+//  yashhingu32@gmail.com
 
 //  {'row': 112, 'motor1': 20.0, 'motor2': 20.0, 'motor3': 20.0}
 
@@ -20,16 +21,25 @@
 #define EN_PIN_M3 A8
 
 #define pedal_btn 4
-#define disengage_btn 5
-#define ENCODER_DT_PIN 6
+#define homing_pin 5
+#define run_teach_pedal_btn 6
+#define ENCODER_DT_PIN 11
+#define enc_steps 222
+#define homing_timeout 60000
+#define homing_step 50
 
-#define Interrupt_pin_1 18
-#define Interrupt_pin_2 19
-#define Interrupt_pin_3 2
+#define Interrupt_pin_1 18 //CLK
+#define Interrupt_pin_2 19 //Encode switch (toggle motor)
+#define Interrupt_pin_3 2 //Teaching button
 
 #define home_sens_m1 40
 #define home_sens_m2 42
 #define home_sens_m3 44
+
+#define motor1_speed 4000
+#define motor2_speed 4000
+#define motor3_speed 4000
+
 
 MultiStepper multiStepper;
 
@@ -47,11 +57,11 @@ AccelStepper stepper3(1, STEP_PIN_M3, DIR_PIN_M3);
 String incomingData = "";
 bool newData = false;
 bool pedal_state;
-bool disengage_state;
+bool teach_pedal_state;
 
 volatile int encoderPos = 0;
 volatile boolean rotating = false;
-int axisToggle = 1;
+int axisToggle = 0;
 
 void setup() {
   Serial.begin(115200);
@@ -69,54 +79,64 @@ void setup() {
   bool newData = false;
   
   stepper1.setMaxSpeed(16000);      // Set the maximum speed in steps per second
-  stepper1.setAcceleration(16000);    // Set the acceleration in steps per second^2
-  stepper1.setSpeed(16000); // 24 * 16 = 384
+  stepper1.setAcceleration(8000);    // Set the acceleration in steps per second^2
+  stepper1.setSpeed(motor1_speed); // 24 * 16 = 384
                                    // Set the target position (3600 steps = 360 degrees)
-  stepper2.setMaxSpeed(2000);      // Set the maximum speed in steps per second
-  stepper2.setAcceleration(1000);    // Set the acceleration in steps per second^2
-  stepper2.setSpeed(1000); // 24 * 16 = 384
+  stepper2.setMaxSpeed(16000);      // Set the maximum speed in steps per second
+  stepper2.setAcceleration(8000);    // Set the acceleration in steps per second^2
+  stepper2.setSpeed(motor2_speed); // 24 * 16 = 384
   
-  stepper3.setMaxSpeed(2000);      // Set the maximum speed in steps per second
-  stepper3.setAcceleration(1000);    // Set the acceleration in steps per second^2
-  stepper3.setSpeed(1000); // 24 * 16 = 384
+  stepper3.setMaxSpeed(16000);      // Set the maximum speed in steps per second
+  stepper3.setAcceleration(8000);    // Set the acceleration in steps per second^2
+  stepper3.setSpeed(motor3_speed); // 24 * 16 = 384
   
   multiStepper.addStepper(stepper1);
   multiStepper.addStepper(stepper2);
   multiStepper.addStepper(stepper3);
+
+  pinMode(home_sens_m1,INPUT_PULLUP);
+  pinMode(home_sens_m2,INPUT_PULLUP);
+  pinMode(home_sens_m3,INPUT_PULLUP);
+  pinMode(homing_pin,INPUT_PULLUP);
   
   pinMode(pedal_btn, INPUT_PULLUP);
-  pinMode(disengage_btn, INPUT_PULLUP);
-  pinMode(ENCODER_DT_PIN, INPUT);
+  pinMode(run_teach_pedal_btn, INPUT_PULLUP);
+  pinMode(ENCODER_DT_PIN, INPUT_PULLUP);
   
-  pinMode(Interrupt_pin_1, INPUT);
-  attachInterrupt(digitalPinToInterrupt(Interrupt_pin_1), Interrupt_1, CHANGE);
-  pinMode(Interrupt_pin_2, INPUT_PULLUP);
+  pinMode(Interrupt_pin_1, INPUT_PULLUP); // CLK_PIN
+  attachInterrupt(digitalPinToInterrupt(Interrupt_pin_1), Interrupt_1, RISING);
+  pinMode(Interrupt_pin_2, INPUT_PULLUP); // SW_PIN
   attachInterrupt(digitalPinToInterrupt(Interrupt_pin_2), Interrupt_2, FALLING);
-  pinMode(Interrupt_pin_2, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(Interrupt_pin_3), Interrupt_3, RISING);
+  pinMode(Interrupt_pin_3, INPUT_PULLUP); // Teaching Pin
+  attachInterrupt(digitalPinToInterrupt(Interrupt_pin_3), Interrupt_3, FALLING);
 
 }
 
 long positions[3];
-
+long teached_positions[3];
+bool knob_turn = false;
+bool homing_state = false;
 void loop() {
-  
+
 pedal_state = digitalRead(pedal_btn);
-disengage_state = digitalRead(disengage_btn);
-
-stepper2.setSpeed(16000);
-stepper2.setSpeed(16000);
-stepper2.setSpeed(16000);
-
-
-if (!disengage_state) {digitalWrite(EN_PIN_M1, HIGH);}
-else {digitalWrite(EN_PIN_M1, LOW);}
- 
+teach_pedal_state = digitalRead(run_teach_pedal_btn);
+homing_state = !digitalRead(homing_pin);
+if (homing_state){
+  homing_stepper();
+  }
+ if (knob_turn){
+    multiStepper.moveTo(positions);
+    multiStepper.runSpeedToPosition();
+    knob_turn = false;
+}
   if (Serial.available() > 0 ) {
 
      String incomingData = Serial.readStringUntil('\n');
      Serial.println("Sending data: " + incomingData);
         if(!pedal_state) json_data(incomingData);
+        else if (!teach_pedal_state) {
+                    stepperRun(teached_positions[0],teached_positions[1],teached_positions[2]);
+        }
 
 }
   
@@ -132,6 +152,7 @@ else {digitalWrite(EN_PIN_M1, LOW);}
 }
 
 void stepperRun(long M1,long M2,long M3){
+    
     Serial.print("Motor_1: ");
     Serial.print(M1);
     Serial.print(" Motor_2: ");
@@ -189,24 +210,39 @@ void json_data(String serialData){
     }
 }
 
-bool m1_reached = false;
-bool m2_reached = false;
-bool m3_reached = false;
+bool m1_reached;
+bool m2_reached;
+bool m3_reached;
 
 void Interrupt_1() {
-  rotating = true;
+    rotating = true;
+    Serial.println("---- ---- ----");
+    Serial.print("Motor No.: ");
+    Serial.println(axisToggle+1);
+    Serial.print("position_1: ");
+    Serial.println(positions[0]);
+    Serial.print("position_2: ");
+    Serial.println(positions[1]);
+    Serial.print("position_3: ");
+    Serial.println(positions[2]);
+    
   
   // Read the state of DT pin to determine the direction
   if (digitalRead(ENCODER_DT_PIN) == HIGH) {
-    positions[axisToggle]++;
+
+          positions[axisToggle] = positions[axisToggle] + enc_steps;
+  
   } else {
-    positions[axisToggle]--;
+    
+    positions[axisToggle] = positions[axisToggle] - enc_steps;
+  
   }
    
-   multiStepper.moveTo(positions);
-   multiStepper.runSpeedToPosition();
-  // Uncomment the next line if you want to print the encoder position to the serial monitor
-  // Serial.println(encoderPos);
+//   multiStepper.moveTo(positions);
+//   multiStepper.runSpeedToPosition();
+   knob_turn = true;
+
+   
 
   rotating = false;
   }
@@ -223,42 +259,51 @@ delay(50);  // Debounce
     }
   }
 }
+
 void Interrupt_3() {
-m3_reached = true;
+    teached_positions[0] = positions[0];
+    teached_positions[1] = positions[1];
+    teached_positions[2] = positions[2];
 }
-
-
 
 void homing_stepper(){
   unsigned long previousMillis = millis();
-  while (m1_reached!=true && m2_reached!=true && m3_reached!=true){
+    m1_reached = !digitalRead(home_sens_m1);
+    m2_reached = !digitalRead(home_sens_m2);
+    m3_reached = !digitalRead(home_sens_m3);
+
+  while (m1_reached==false || m2_reached==false || m3_reached==false){
     
     unsigned long currentMillis = millis();
     m1_reached = !digitalRead(home_sens_m1);
     m2_reached = !digitalRead(home_sens_m2);
     m3_reached = !digitalRead(home_sens_m3);
      
-     if (currentMillis - previousMillis >= 60000) {
+     if (currentMillis - previousMillis <= homing_timeout) {
             if (!m1_reached){
-                  positions[0]--;
+                  positions[0] = positions[0] - homing_step;
                     }
             if (!m2_reached){
-                  positions[1]--;
+                  positions[1] = positions[1] - homing_step;
                     }
             if (!m3_reached){
-                  positions[2]--;
+                  positions[2] = positions[2] - homing_step;
                     }
-          
+
            multiStepper.moveTo(positions);
            multiStepper.runSpeedToPosition();
       
            if (m1_reached==true && m2_reached==true && m3_reached==true){
+                  Serial.println("Home Position Set");
                   set_motor_zero();
+                  break;
               }
       } else
               {
-                Serial.println("Homing Failed : Taking too much time");
+                Serial.println("Homing Failed : Taking too much time!!");
+                break;
               }
 
   }
+  Serial.println("Homing over!!");
 }
