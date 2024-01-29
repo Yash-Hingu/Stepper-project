@@ -7,7 +7,7 @@ import pandas as pd
 import json
 import keyboard
 from calculate_angle import angle_to_steps, dist_to_steps
-# Replace with the COM port of your ESP32 (e.g., 'COM1' on Windows or '/dev/ttyUSB0' on Linux)
+# Replace with the COM port of your controller (e.g., 'COM1' on Windows or '/dev/ttyUSB0' on Linux)
 for t in range(1,11):
   try:
     ser = serial.Serial('COM5', 115200, timeout=1)
