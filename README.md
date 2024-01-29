@@ -53,4 +53,5 @@ The stepper motors in this project are denoted as M1, M2, and M3.
 
 ## Author
 
-[Your Name]
+Yash Hingu
+
