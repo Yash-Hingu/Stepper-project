@@ -50,8 +50,3 @@ The stepper motors in this project are denoted as M1, M2, and M3.
 6. Control the motors using the knob encoder and motor toggling button.
 
 7. Run the motors to the previously taught position using the pedal button connected to D6.
-
-## Author
-
-Yash Hingu
-
