@@ -1,6 +1,6 @@
 # Stepper Motor Controlling Project with Arduino Mega
 
-This project involves the control of stepper motors using an Arduino Mega board. The project includes features such as motor rotation triggered by a pedal button, homing of motors using switches, teaching positions with a button, and control using a knob encoder.
+This project involves the control of stepper motors using an Arduino Mega board(here we used makerbase board MKS GenL V1.0). The project includes features such as motor rotation triggered by a pedal button, homing of motors using switches, teaching positions with a button, and control using a knob encoder.
 
 ## Motors
 
@@ -9,13 +9,13 @@ The stepper motors in this project are denoted as M1, M2, and M3.
 ## Inputs Connection
 
 1. **Pedal Button (D4):**
-   - The pedal button on pin D4 triggers motor rotation by a specific number of steps, as directed by a PySerial script.
+   - The pedal button on pin D4 triggers motor rotation by a specific number of steps, as directed by a main.py script.
 
 2. **Homing Switches:**
    - Home switch for M1: Connected to pin D40.
    - Home switch for M2: Connected to pin D42.
    - Home switch for M3: Connected to pin A11.
-   - These switches are used for homing each of the three axes of the motors.
+   - These switches are used for homing each of the three axis of the motors.
 
 3. **Teaching Button (X+ Servo - Red Connector):**
    - The teaching button is connected to the signal pin of the X+ servo on the onboard.
